@@ -51,11 +51,12 @@ pipeline{
                 // }
 
                 // For Windows agents, using withCredentials to handle SSH keys because the agent is running on a Windows machine and  StringIndexOutOfBoundsException(environment variable parsing exception) can occur while using sshagent on Windows
-                withCredentials([sshUserPrivateKey(credentialsId: 'vm-ubuntu-mikeross-unpw', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+                 withCredentials([sshUserPrivateKey(credentialsId: 'vm-ubuntu-mikeross-unpw', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
                    bat '''
                         echo 'Fixing SSH key permissions...'
                         icacls "%SSH_KEY%" /inheritance:r
-                        icacls "%SSH_KEY%" /grant:r "%USERNAME%:R"
+                        icacls "%SSH_KEY%" /grant:r "Administrators:F"
+                        icacls "%SSH_KEY%" /grant:r "SYSTEM:F"
                         
                         echo 'Copying build files to the VM...'
                         ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "mkdir -p /var/www/build"
