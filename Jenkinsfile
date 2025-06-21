@@ -19,13 +19,13 @@ pipeline{
         stage('Install Dependencies'){
             steps{
                 echo 'Installing dependencies...'
-                sh 'npm install'
+                powershell  'npm install'
             }
         }
         stage('Build'){
             steps{
                 echo 'Building react application...'
-                sh 'npm run build'
+                powershell  'npm run build'
             }
         }
         stage('Test'){
