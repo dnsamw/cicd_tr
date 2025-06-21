@@ -1,0 +1,73 @@
+pipeline{
+    agent any
+
+    tools{
+        nodejs 'NodeJS'
+    }
+
+    environment{
+        VM_HOST = '192.168.1.3'
+        VM_USER = 'mikeross'
+        DEPLOY_PATH = '/var/www'
+    }
+    stages{
+        stage('Checkout'){
+            steps{
+                echo 'Checking out code from github...'
+            }
+        }
+        stage('Install Dependencies'){
+            steps{
+                echo 'Installing dependencies...'
+                sh 'npm install'
+            }
+        }
+        stage('Build'){
+            steps{
+                echo 'Building react application...'
+                sh 'npm run build'
+            }
+        }
+        stage('Test'){
+            steps{
+                echo 'Running tests...'
+            }
+        }
+        stage('Deploy to Ubuntu VM'){
+            steps{
+                echo 'Deploying the application...'
+               sshagent:(['vm-ubuntu-mikeross-unpw']) {
+                    // Copying build files to the VM
+                    bat """
+                        scp -o StrictHostKeyChecking=no -r build/* ${VM_USER}@${VM_HOST}:${DEPLOY_PATH}
+
+                    """
+                    // Restarting the nginx on the VM
+                    bat """
+                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'sudo systemctl reload nginx'
+                    """
+                }
+            }
+        }
+    }   
+    // Post actions can be added here if needed
+    post {
+        always {
+            echo 'Pipeline execution completed.'
+            // Archive build artifacts or perform cleanup if necessary
+            archiveArtifacts artifacts: 'build/**', allowEmptyArchive: true
+        }
+        success {
+            echo 'Deployment successful!'
+            echo 'Application is live at http://${VM_HOST}'
+        }
+        failure {
+            echo 'Deployment failed!'
+            echo 'Please check the logs for errors.'
+        }
+        cleanup {
+            echo 'Cleaning up workspace...'
+            cleanWs()
+        }
+    }
+}
