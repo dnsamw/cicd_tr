@@ -36,16 +36,31 @@ pipeline{
         stage('Deploy to Ubuntu VM'){
             steps{
                 echo 'Deploying the application...'
-                sshagent(['vm-ubuntu-mikeross-unpw']) {
-                    // Copying build files to the VM
-                    bat """
-                        scp -o StrictHostKeyChecking=no -r build/* ${VM_USER}@${VM_HOST}:${DEPLOY_PATH}
 
-                    """
-                    // Restarting the nginx on the VM
-                    bat """
-                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'sudo systemctl reload nginx'
-                    """
+                // for linux based agents, you can use the sshagent plugin to handle SSH keys
+                // sshagent(['vm-ubuntu-mikeross-unpw']) {
+                //     // Copying build files to the VM
+                //     bat """
+                //         scp -o StrictHostKeyChecking=no -r build/* ${VM_USER}@${VM_HOST}:${DEPLOY_PATH}
+
+                //     """
+                //     // Restarting the nginx on the VM
+                //     bat """
+                //         ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_HOST} 'sudo systemctl reload nginx'
+                //     """
+                // }
+
+                // For Windows agents, using withCredentials to handle SSH keys because the agent is running on a Windows machine and  StringIndexOutOfBoundsException(environment variable parsing exception) can occur while using sshagent on Windows
+                withCredentials([sshUserPrivateKey(credentialsId: 'vm-ubuntu-mikeross-unpw', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+                   bat '''
+                        echo 'Copying build files to the VM...'
+                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "mkdir -p /var/www/build"
+                        scp -i "%SSH_KEY%" -o StrictHostKeyChecking=no -r build/* %SSH_USER%@192.168.1.3:/var/www/build/
+                        echo "Restarting nginx..."
+                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "sudo systemctl restart nginx"
+                        echo "Checking nginx status..."
+                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "sudo systemctl status nginx --no-pager"
+                    '''
                 }
             }
         }
