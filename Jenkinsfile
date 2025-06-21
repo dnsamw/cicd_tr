@@ -52,14 +52,26 @@ pipeline{
 
                 // For Windows agents, using withCredentials to handle SSH keys because the agent is running on a Windows machine and  StringIndexOutOfBoundsException(environment variable parsing exception) can occur while using sshagent on Windows
                 withCredentials([sshUserPrivateKey(credentialsId: 'vm-ubuntu-mikeross-unpw', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
-                   bat '''
-                        echo 'Copying build files to the VM...'
-                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "mkdir -p /var/www/build"
-                        scp -i "%SSH_KEY%" -o StrictHostKeyChecking=no -r build/* %SSH_USER%@192.168.1.3:/var/www/build/
-                        echo "Restarting nginx..."
-                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "sudo systemctl restart nginx"
-                        echo "Checking nginx status..."
-                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "sudo systemctl status nginx --no-pager"
+                   powershell '''
+                        Write-Host "Fixing SSH key permissions..."
+                        $keyPath = $env:SSH_KEY
+                        
+                        # Remove inheritance and set proper permissions
+                        $acl = Get-Acl $keyPath
+                        $acl.SetAccessRuleProtection($true, $false)
+                        $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "Read", "Allow")
+                        $acl.SetAccessRule($accessRule)
+                        Set-Acl $keyPath $acl
+                        
+                        Write-Host "Copying build files to the VM..."
+                        & ssh -i "$env:SSH_KEY" -o StrictHostKeyChecking=no "$env:SSH_USER@192.168.1.3" "mkdir -p /var/www/build"
+                        & scp -i "$env:SSH_KEY" -o StrictHostKeyChecking=no -r build/* "$env:SSH_USER@192.168.1.3:/var/www/build/"
+                        
+                        Write-Host "Restarting nginx..."
+                        & ssh -i "$env:SSH_KEY" -o StrictHostKeyChecking=no "$env:SSH_USER@192.168.1.3" "sudo systemctl restart nginx"
+                        
+                        Write-Host "Checking nginx status..."
+                        & ssh -i "$env:SSH_KEY" -o StrictHostKeyChecking=no "$env:SSH_USER@192.168.1.3" "sudo systemctl status nginx --no-pager"
                     '''
                 }
             }
