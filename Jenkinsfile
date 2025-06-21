@@ -36,7 +36,7 @@ pipeline{
         stage('Deploy to Ubuntu VM'){
             steps{
                 echo 'Deploying the application...'
-               sshagent:(['vm-ubuntu-mikeross-unpw']) {
+                sshagent(['vm-ubuntu-mikeross-unpw']) {
                     // Copying build files to the VM
                     bat """
                         scp -o StrictHostKeyChecking=no -r build/* ${VM_USER}@${VM_HOST}:${DEPLOY_PATH}
