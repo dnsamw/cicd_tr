@@ -58,11 +58,16 @@ pipeline{
                         icacls "%SSH_KEY%" /grant:r "Administrators:F"
                         icacls "%SSH_KEY%" /grant:r "SYSTEM:F"
                         
-                        echo 'Copying build files to the VM...'
-                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "mkdir -p /var/www/build"
-                        scp -i "%SSH_KEY%" -o StrictHostKeyChecking=no -r build/* %SSH_USER%@192.168.1.3:/var/www/build/
+                        echo 'Copying build files to user home directory first...'
+                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "mkdir -p ~/deploy/build"
+                        scp -i "%SSH_KEY%" -o StrictHostKeyChecking=no -r build/* %SSH_USER%@192.168.1.3:~/deploy/build/
+                        
+                        echo 'Moving files to web directory and setting permissions...'
+                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "sudo rm -rf /var/www/build && sudo mkdir -p /var/www/build && sudo cp -r ~/deploy/build/* /var/www/build/ && sudo chown -R www-data:www-data /var/www/build && sudo chmod -R 644 /var/www/build && sudo find /var/www/build -type d -exec chmod 755 {} \\;"
+                        
                         echo "Restarting nginx..."
                         ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "sudo systemctl restart nginx"
+                        
                         echo "Checking nginx status..."
                         ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no %SSH_USER%@192.168.1.3 "sudo systemctl status nginx --no-pager"
                     '''
